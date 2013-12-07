@@ -29,6 +29,10 @@ CATransform3D CATransform3DRotatedWithPerspectiveFactor(double factor) {
 
 
 @interface LiveViewController ()
+
+@property (nonatomic) BOOL isVideo;
+@property (nonatomic, strong) UISwitch *switchCaptureMode;
+@property (nonatomic, strong) UILabel *labelCaptureMode;
 @end
 
 @implementation LiveViewController
@@ -45,7 +49,6 @@ float perspectiveFactor = 0.25;
 
 bool didFinishEffect = NO;
 bool isRecording = NO;
-bool isVideo = YES;
 bool isWatching = NO;
 bool isSaving = NO;
 bool ignoreVolumeDown = NO;
@@ -68,8 +71,14 @@ int currentIndex = -1;
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
         // Custom initialization
+		_isVideo = [[NSUserDefaults standardUserDefaults] boolForKey:@"PoppyCaptureVideo"];
     }
     return self;
+}
+
+- (void)setIsVideo:(BOOL)isVideo {
+	_isVideo = isVideo;
+	[[NSUserDefaults standardUserDefaults] setBool:isVideo forKey:@"PoppyCaptureVideo"];
 }
 
 - (void)viewDidLoad
@@ -86,7 +95,7 @@ int currentIndex = -1;
         [self hideViewer];
         [self showCameraControls];
     } else {
-        if (isVideo) {
+        if (self.isVideo) {
             if (isRecording) {
                 [self stopRecording];
             } else {
@@ -411,7 +420,7 @@ int currentIndex = -1;
 
 - (void)activateCamera
 {
-    if (isVideo) {
+    if (self.isVideo) {
         // video camera setup
         if ([self deviceModelNumber] == 40) {
             videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionBack];
@@ -624,20 +633,15 @@ int currentIndex = -1;
     [labelCaptureMode setBackgroundColor:[UIColor clearColor]];
     [labelCaptureMode setTextAlignment:NSTextAlignmentCenter];
     
-    UISwitch *switchCaptureMode = [[UISwitch alloc] initWithFrame:CGRectMake(controlsView.frame.size.width - 230, 35, 50, 20)];
-    [switchCaptureMode addTarget: self action: @selector(toggleCaptureMode:) forControlEvents:UIControlEventValueChanged];
+	self.labelCaptureMode = labelCaptureMode;
+    self.switchCaptureMode = [[UISwitch alloc] initWithFrame:CGRectMake(controlsView.frame.size.width - 230, 35, 50, 20)];
+	[self.switchCaptureMode addTarget:self action:@selector(toggleCaptureMode:) forControlEvents:UIControlEventValueChanged];
     
-    if(isVideo){
-        [labelCaptureMode setText:@"Video"];
-        [switchCaptureMode setOn: YES];
-    } else {
-        [labelCaptureMode setText:@"Photo"];
-        [switchCaptureMode setOn: NO];
-    }
-    
+	[self updateUIForCaptureMode];
+	   
     [controlsView addSubview: viewShadow];
-    [controlsView addSubview: labelCaptureMode];
-    [controlsView addSubview: switchCaptureMode];
+    [controlsView addSubview:self.labelCaptureMode];
+    [controlsView addSubview:self.switchCaptureMode];
     
     // add the switch to viewer button
     NSLog(@"adding the viewer button");
@@ -749,16 +753,24 @@ int currentIndex = -1;
                      }];
 }
 
-- (void)toggleCaptureMode: (id) sender {
+- (void)updateUIForCaptureMode {
+	if(self.isVideo){
+        [self.labelCaptureMode setText:@"Video"];
+        [self.switchCaptureMode setOn:YES];
+    } else {
+        [self.labelCaptureMode setText:@"Photo"];
+        [self.switchCaptureMode setOn:NO];
+    }
+}
+
+- (void)toggleCaptureMode:(id)sender {
     [self showCameraControls];
-    UISwitch *toggle = (UISwitch *) sender;
-    NSLog(@"%@", toggle.on ? @"Video" : @"Still");
-    UILabel *toggleLabel = (id)[self.view viewWithTag:101];
-    isVideo = toggle.on;
-    
+    UISwitch *toggle = self.switchCaptureMode;
+
+    self.isVideo = toggle.on;
     id camera = toggle.on ? stillCamera : videoCamera;
-    [toggleLabel setText: toggle.on ? @"Video" : @"Photo"];
-    
+	[self updateUIForCaptureMode];
+	
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
     ^{
         [camera stopCameraCapture];
@@ -976,7 +988,7 @@ int currentIndex = -1;
 - (void)setCameraFocus:(CGPoint)location
 {
     AVCaptureDevice *device;
-    if (isVideo) {
+    if (self.isVideo) {
         device = videoCamera.inputCamera;
     } else {
         device = stillCamera.inputCamera;
