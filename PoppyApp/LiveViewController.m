@@ -260,7 +260,7 @@ int currentIndex = -1;
                  if (asset) {
                      NSLog(@"got the asset: %d", index);
                      ALAssetRepresentation *assetRepresentation = [asset defaultRepresentation];
-                     UIImage *fullScreenImage = [UIImage imageWithCGImage:[assetRepresentation fullScreenImage] scale:[assetRepresentation scale] orientation:UIImageOrientationLeft];
+                     UIImage *fullScreenImage = [UIImage imageWithCGImage:[assetRepresentation fullScreenImage] scale:[assetRepresentation scale] orientation:assetRepresentation.orientation];
                      NSLog(@"image stuff, wide: %f height: %f", fullScreenImage.size.width, fullScreenImage.size.height);
                      
                      [imgView setImage:fullScreenImage];
@@ -534,6 +534,7 @@ int currentIndex = -1;
         [transformRight addTarget:finalBlend];
          
         [finalBlend addTarget:finalFilter];
+		
         //[blendImages addTarget:finalFilter];
     }
 }
@@ -792,8 +793,17 @@ int currentIndex = -1;
     [finalFilter prepareForImageCapture];
     
     [stillCamera capturePhotoAsImageProcessedUpToFilter:finalFilter withCompletionHandler:^(UIImage *processedImage, NSError *error) {
-        // Save to assets library
-        [assetLibrary writeImageToSavedPhotosAlbum:processedImage.CGImage metadata:stillCamera.currentCaptureMetadata completionBlock:^(NSURL *assetURL, NSError *error2) {
+		
+		NSMutableDictionary *captureMetadata = [stillCamera.currentCaptureMetadata mutableCopy];
+		
+		NSLog(@"%s %@",__FUNCTION__,captureMetadata);
+		// correct the orientation, as it represents the orientation when the photo was taken, and our processed image has a different orientation
+		//captureMetadata[ALAssetPropertyOrientation] = @(ALAssetOrientationUp);
+		// sadly the key is just @"Orientation" - didn't find a constant for that
+		captureMetadata[@"Orientation"] = @(UIImageOrientationUp);
+        
+		// Save to assets library
+        [assetLibrary writeImageToSavedPhotosAlbum:processedImage.CGImage metadata:captureMetadata completionBlock:^(NSURL *assetURL, NSError *error2) {
              if (error2) {
                  NSLog(@"ERROR: the image failed to be written");
              }
