@@ -122,6 +122,7 @@ int currentIndex = -1;
     isWatching = NO;
     [imgView setHidden:YES];
     [mainMoviePlayer stop];
+    mainMoviePlayer = nil;
     [[self.view viewWithTag:103] removeFromSuperview]; //remove the movie player
     [[self.view viewWithTag:104] removeFromSuperview]; //remove the camera button
 }
@@ -229,11 +230,18 @@ int currentIndex = -1;
     NSLog(@"album count %d", assetCount);
     if (assetCount > 0) {
         if (!isWatching) {
+            isWatching = YES; // we're in view mode, not capture mode
             [self showViewerControls];
             [self dimView:0.0 withAlpha:0.1 withView:[self.view viewWithTag:104] withTimer:NO];
+            //tear down everything about capture mode
+            [videoCamera stopCameraCapture];
+            videoCamera = nil;
+            [stillCamera stopCameraCapture];
+            stillCamera = nil;
+            [finalFilter removeAllTargets];
+            [displayFilter removeAllTargets];
+            [self hideView:[self.view viewWithTag:100]]; // hide the capture mode controls
         }
-        isWatching = YES; // we're in view mode, not capture mode
-        [self hideView:[self.view viewWithTag:100]]; // hide the capture mode controls
         
         [mainMoviePlayer stop];
         [[self.view viewWithTag:103] removeFromSuperview];
@@ -260,7 +268,12 @@ int currentIndex = -1;
                  if (asset) {
                      NSLog(@"got the asset: %d", index);
                      ALAssetRepresentation *assetRepresentation = [asset defaultRepresentation];
-                     UIImage *fullScreenImage = [UIImage imageWithCGImage:[assetRepresentation fullScreenImage] scale:[assetRepresentation scale] orientation:assetRepresentation.orientation];
+                     UIImageOrientation orientation = UIImageOrientationUp;
+                     NSNumber* orientationValue = [asset valueForProperty:@"ALAssetPropertyOrientation"];
+                     if (orientationValue != nil) {
+                         orientation = [orientationValue intValue];
+                     }
+                     UIImage *fullScreenImage = [UIImage imageWithCGImage:[assetRepresentation fullScreenImage] scale:[assetRepresentation scale] orientation:orientation];
                      NSLog(@"image stuff, wide: %f height: %f", fullScreenImage.size.width, fullScreenImage.size.height);
                      
                      [imgView setImage:fullScreenImage];
@@ -423,7 +436,7 @@ int currentIndex = -1;
     if (self.isVideo) {
         // video camera setup
         if ([self deviceModelNumber] == 40) {
-            videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionBack];
+            videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPresetiFrame960x540 cameraPosition:AVCaptureDevicePositionBack];
         } else {
             videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionBack];
         }
@@ -433,7 +446,7 @@ int currentIndex = -1;
     } else {
         //still camera setup
         if ([self deviceModelNumber] == 40) {
-            stillCamera = [[GPUImageStillCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionBack];
+            stillCamera = [[GPUImageStillCamera alloc] initWithSessionPreset:AVCaptureSessionPresetiFrame960x540 cameraPosition:AVCaptureDevicePositionBack];
         } else {
             stillCamera = [[GPUImageStillCamera alloc] initWithSessionPreset:AVCaptureSessionPresetPhoto  cameraPosition:AVCaptureDevicePositionBack];
         }
@@ -595,6 +608,10 @@ int currentIndex = -1;
 
 - (void) showCameraControls
 {
+    if (!(stillCamera || videoCamera)){
+        [self activateCamera];
+    }
+    
     NSLog(@"show camera controls");
     
     UIView *viewControls = (id)[self.view viewWithTag:100];
@@ -770,11 +787,17 @@ int currentIndex = -1;
 
     self.isVideo = toggle.on;
     id camera = toggle.on ? stillCamera : videoCamera;
+
 	[self updateUIForCaptureMode];
 	
+    [camera stopCameraCapture];
+    [displayFilter removeAllTargets];
+    [finalFilter removeAllTargets];
+    displayFilter = nil;
+    finalFilter = nil;
+    
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
     ^{
-        [camera stopCameraCapture];
         [self activateCamera];
     });
 }
@@ -793,16 +816,12 @@ int currentIndex = -1;
     [finalFilter prepareForImageCapture];
     
     [stillCamera capturePhotoAsImageProcessedUpToFilter:finalFilter withCompletionHandler:^(UIImage *processedImage, NSError *error) {
-		
-		NSMutableDictionary *captureMetadata = [stillCamera.currentCaptureMetadata mutableCopy];
-		
-		NSLog(@"%s %@",__FUNCTION__,captureMetadata);
-		// correct the orientation, as it represents the orientation when the photo was taken, and our processed image has a different orientation
-		//captureMetadata[ALAssetPropertyOrientation] = @(ALAssetOrientationUp);
-		// sadly the key is just @"Orientation" - didn't find a constant for that
-		captureMetadata[@"Orientation"] = @(UIImageOrientationUp);
+        // Save to assets library
+        NSMutableDictionary *captureMetadata = [stillCamera.currentCaptureMetadata mutableCopy];
+        // correct the orientation, as it represents the orientation when the photo was taken, and our processed image has a different orientation
+        //captureMetadata[ALAssetPropertyOrientation] = @(ALAssetOrientationUp);
+        captureMetadata[@"Orientation"] = @(UIImageOrientationUp);
         
-		// Save to assets library
         [assetLibrary writeImageToSavedPhotosAlbum:processedImage.CGImage metadata:captureMetadata completionBlock:^(NSURL *assetURL, NSError *error2) {
              if (error2) {
                  NSLog(@"ERROR: the image failed to be written");
@@ -850,14 +869,14 @@ int currentIndex = -1;
     [viewShadow setBackgroundColor:[UIColor blackColor]];
     [viewShadow setAlpha:0.3];
     
-    UILabel *labelNoMedia = [[UILabel alloc] initWithFrame:CGRectMake(0,0,viewSaving.frame.size.width, viewSaving.frame.size.height)];
-    [labelNoMedia setTextColor:[UIColor whiteColor]];
-    [labelNoMedia setBackgroundColor:[UIColor clearColor]];
-    [labelNoMedia setTextAlignment:NSTextAlignmentCenter];
-    [labelNoMedia setText:@"Saving..."];
+    UILabel *labelSaving = [[UILabel alloc] initWithFrame:CGRectMake(0,0,viewSaving.frame.size.width, viewSaving.frame.size.height)];
+    [labelSaving setTextColor:[UIColor whiteColor]];
+    [labelSaving setBackgroundColor:[UIColor clearColor]];
+    [labelSaving setTextAlignment:NSTextAlignmentCenter];
+    [labelSaving setText:@"Saving..."];
     
     [viewSaving addSubview:viewShadow];
-    [viewSaving addSubview:labelNoMedia];
+    [viewSaving addSubview:labelSaving];
     
     [self.view addSubview:viewSaving];
     
