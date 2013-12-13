@@ -45,7 +45,7 @@ int next = 1;
 int prev = -1;
 
 float cropFactor = 0.7;
-float perspectiveFactor = 0.25;
+float perspectiveFactor = 0.267;
 
 bool didFinishEffect = NO;
 bool isRecording = NO;
