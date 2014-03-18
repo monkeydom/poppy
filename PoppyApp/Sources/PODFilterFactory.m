@@ -10,6 +10,9 @@
 
 #import "PODDeviceSettingsManager.h"
 
+#define FILTERLOG(args...)
+//#define FILTERLOG(args...) NSLog(args)
+
 @implementation PODFilterFactory
 
 + (CGSize)maxOpenGLTextureSize {
@@ -32,22 +35,22 @@
 	
 	CGFloat inset = (aFactor + .367 * aShift ) * CGRectGetHeight(extentRect);
     CGFloat squeeze = CGRectGetWidth(extentRect) * aShift;
-    NSLog(@"SHIFT: %f", aShift);
-    NSLog(@"SQUEEZE: %f", squeeze);
+    FILTERLOG(@"SHIFT: %f", aShift);
+    FILTERLOG(@"SQUEEZE: %f", squeeze);
 	
-    NSLog(@"pre width: %f", bottomRight.X - bottomLeft.X);
+    FILTERLOG(@"pre width: %f", bottomRight.X - bottomLeft.X);
     
 	if (anEdge == CGRectMinXEdge) {
-        NSLog(@"LEFT");
+        FILTERLOG(@"LEFT");
         bottomLeft = [CIVector vectorWithX:bottomLeft.X + squeeze Y:bottomLeft.Y + inset];
         topLeft = [CIVector vectorWithX:topLeft.X + squeeze Y:topLeft.Y - inset];
 	} else if (anEdge == CGRectMaxXEdge) {
-        NSLog(@"RIGHT");
+        FILTERLOG(@"RIGHT");
         bottomRight = [CIVector vectorWithX:bottomRight.X - squeeze Y:bottomRight.Y + inset];
         topRight = [CIVector vectorWithX:topRight.X - squeeze Y:topRight.Y - inset];
 	}
     
-    NSLog(@"post width: %f", bottomRight.X - bottomLeft.X);
+    FILTERLOG(@"post width: %f", bottomRight.X - bottomLeft.X);
 	
 	CIFilter *result = [CIFilter filterWithName:@"CIPerspectiveTransform" keysAndValues:kCIInputImageKey,inputImage,
 						@"inputTopLeft"    ,topLeft,
@@ -86,21 +89,21 @@
     // using shiftoffset to compensate for the horizontal shift in the keystoning
     CGFloat shiftOffset = [PODDeviceSettingsManager deviceSettingsManager].calibrationCenterOffset.x; // 1 for 5, .2 for 5s
     shiftOffset = shiftOffset * (ABS(shiftOffset)) * 25;
-    NSLog(@"shiftOffset: %f", shiftOffset);
+    FILTERLOG(@"shiftOffset: %f", shiftOffset);
 	CGRect cropRect = CGRectZero;
 	cropRect.size = [PODFilterChainSettings absoluteSizeForNormalizedSize:aSetting.sideCropSize imageExtent:fullExtent];
 	cropRect.origin.y = round(CGRectGetHeight(cropRect) / -2.0);
 	cropRect.origin.x = round(CGRectGetWidth(cropRect) / -2.0);
     
     CGFloat stretch = cropRect.size.width * shiftOffset;
-    NSLog(@"STRETCH: %f", stretch);
+    FILTERLOG(@"STRETCH: %f", stretch);
     
 	CGRect leftCropRect = CGRectOffset(cropRect, -[PODFilterChainSettings absoluteWidthForNormalizedWidth:aSetting.leftDistance imageExtent:fullExtent] ,0);
     
     leftCropRect.origin.x = leftCropRect.origin.x + stretch;
     leftCropRect.size.width = leftCropRect.size.width - stretch;
 
-    NSLog(@"left width: %f", leftCropRect.size.width);
+    FILTERLOG(@"left width: %f", leftCropRect.size.width);
 	CIFilter *leftCropFilter = [CIFilter filterWithName:@"CICrop" keysAndValues:kCIInputImageKey,filter.outputImage, @"inputRectangle",[CIVector vectorWithCGRect:leftCropRect],nil];
 	[filterChain addObject:leftCropFilter];
 
@@ -109,7 +112,7 @@
     
 
     rightCropRect.size.width = rightCropRect.size.width + stretch;
-    NSLog(@"Right width: %f",rightCropRect.size.width);
+    FILTERLOG(@"Right width: %f",rightCropRect.size.width);
     
 	CIFilter *rightCropFilter = [CIFilter filterWithName:@"CICrop" keysAndValues:kCIInputImageKey,filter.outputImage, @"inputRectangle",[CIVector vectorWithCGRect:rightCropRect],nil];
 	[filterChain addObject:rightCropFilter];
