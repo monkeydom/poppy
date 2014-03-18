@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>6B4EB2FD-E708-404C-BD44-3F6D57499F01</string>
+	<key>IDESourceControlProjectName</key>
+	<string>Poppy</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>203D3E84-5778-40C4-B4F0-F2AF67BEF890</key>
+		<string>ssh://github.com/monkeydom/poppy.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Poppy.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>203D3E84-5778-40C4-B4F0-F2AF67BEF890</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>ssh://github.com/monkeydom/poppy.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>203D3E84-5778-40C4-B4F0-F2AF67BEF890</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>203D3E84-5778-40C4-B4F0-F2AF67BEF890</string>
+			<key>IDESourceControlWCCName</key>
+			<string>poppy</string>
+		</dict>
+	</array>
+</dict>
+</plist>
